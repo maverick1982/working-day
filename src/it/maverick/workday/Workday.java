@@ -7,6 +7,11 @@ import java.util.*;
  */
 public class Workday {
 
+    private static final int MILLISECONDS = 1000;
+    private static final int SECONDS_IN_A_MINUTE = 60;
+    private static final int MINUTES_IN_AN_HOUR = 60;
+    private static final int HOURS_IN_A_DAY = 24;
+
     private Clock clock;
     private long workingDayMillis;
     private final List<Clocking> clockings = new ArrayList<Clocking>();
@@ -18,11 +23,11 @@ public class Workday {
     private int minimumBreakMillis;
 
     public Workday(Clock clock, int workingDayMins) {
-        if (workingDayMins < 0 || workingDayMins > 60 * 24) {
+        if (workingDayMins < 0 || workingDayMins > MINUTES_IN_AN_HOUR * HOURS_IN_A_DAY) {
             throw new IllegalArgumentException("workingDayMins must be included between 0 and 1440 (24h)");
         }
         this.clock = clock;
-        this.workingDayMillis = workingDayMins * 60 * 1000;
+        this.workingDayMillis = workingDayMins * SECONDS_IN_A_MINUTE * MILLISECONDS;
     }
 
     public void addClockingIn(Date clockingIn) throws InvalidClockingSequenceException {
@@ -103,7 +108,17 @@ public class Workday {
 
 
         if (isShortLunchBreak(startTime, endTime)) {
-            intervals.add(new Interval(startTime, new Date(startTime.getTime() + minimumLunchMillis)));
+            intervals.add(getRoundedLunchBreakInterval(startTime, endTime));
+        } else if (isEarlyLunchBreak(startTime, endTime)) {
+            intervals.add(getRouindedBreakInterval(startTime, getValidStartLunchBreak()));
+            intervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), endTime));
+        } else if (isDelayedLunchBreak(startTime, endTime)) {
+            intervals.add(getRoundedLunchBreakInterval(startTime, getValidStopLunchBreak()));
+            intervals.add(getRouindedBreakInterval(getValidStopLunchBreak(), endTime));
+        } else if (isLongLunchBreak(startTime, endTime)) {
+            intervals.add(getRouindedBreakInterval(startTime, getValidStartLunchBreak()));
+            intervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), getValidStopLunchBreak()));
+            intervals.add(getRouindedBreakInterval(getValidStopLunchBreak(), endTime));
         } else if (minimumBreakMillis > 0) {
             long intervalDuration = endTime.getTime() - startTime.getTime();
             long multiplier = intervalDuration / minimumBreakMillis;
@@ -118,21 +133,45 @@ public class Workday {
         return intervals;
     }
 
+    private Interval getRoundedLunchBreakInterval(Date startTime, Date endTime) {
+        Date endInterval;
+        if (endTime.getTime() - startTime.getTime() >= minimumLunchMillis) {
+            endInterval = endTime;
+        } else {
+            endInterval = new Date(startTime.getTime() + minimumLunchMillis);
+        }
+        return new Interval(startTime, endInterval);
+    }
+
+    private Interval getRouindedBreakInterval(Date startTime, Date endTime) {
+        if (minimumBreakMillis > 0) {
+            long intervalDuration = endTime.getTime() - startTime.getTime();
+            long multiplier = intervalDuration / minimumBreakMillis;
+            long breakTime = multiplier * minimumBreakMillis;
+            if (intervalDuration % minimumBreakMillis != 0) {
+                breakTime += minimumBreakMillis;
+            }
+            return new Interval(startTime, new Date(startTime.getTime() + breakTime));
+        } else {
+            return new Interval(startTime, endTime);
+        }
+    }
+
     private boolean isShortLunchBreak(Date startTime, Date endTime) {
         return startTime.after(getValidStartLunchBreak()) && endTime.before(getValidStopLunchBreak()) && (endTime.getTime() - startTime.getTime()) < minimumLunchMillis;
     }
 
-//    private boolean isEarlyLunchBreak(Date startTime, Date endTime) {
-//        return startTime.before(getValidStartLunchBreak()) && endTime.after(getValidStartLunchBreak());
-//    }
-//
-//    private boolean isDelayedLunchBreak(Date startTime, Date endTime) {
-//        return startTime.after(getValidStartLunchBreak()) && startTime.before(getValidStopLunchBreak()) && endTime.after(getValidStopLunchBreak());
-//    }
-//
-//    private boolean isLongLunchBreak(Date startTime, Date endTime) {
-//        return startTime.before(getValidStartLunchBreak()) && endTime.after(getValidStopLunchBreak());
-//    }
+    private boolean isEarlyLunchBreak(Date startTime, Date endTime) {
+        return startTime.before(getValidStartLunchBreak()) && endTime.after(getValidStartLunchBreak()) && endTime.before(getValidStopLunchBreak());
+    }
+
+    private boolean isDelayedLunchBreak(Date startTime, Date endTime) {
+        return startTime.after(getValidStartLunchBreak()) && startTime.before(getValidStopLunchBreak()) && endTime.after(getValidStopLunchBreak());
+    }
+
+    private boolean isLongLunchBreak(Date startTime, Date endTime) {
+        return startTime.before(getValidStartLunchBreak()) && endTime.after(getValidStopLunchBreak());
+    }
 
     private List<Interval> getWorkIntervals() {
         List<Interval> workIntervals = new ArrayList<Interval>();
@@ -145,23 +184,23 @@ public class Workday {
     }
 
     public void setLunchBreak(int startH, int startM, int stopH, int stopM, int minimumMin) {
-        if (startH < 0 || startH > 23 || stopH < 0 || stopH > 23) {
+        if (startH < 0 || startH >= HOURS_IN_A_DAY || stopH < 0 || stopH >= HOURS_IN_A_DAY) {
             throw new IllegalArgumentException("Hours must be included between 0 and 23");
         }
-        if (startM < 0 || startM > 59 || stopM < 0 || stopM > 59 || minimumMin < 0 || minimumMin > 59) {
+        if (startM < 0 || startM >= MINUTES_IN_AN_HOUR || stopM < 0 || stopM >= MINUTES_IN_AN_HOUR || minimumMin < 0 || minimumMin >= MINUTES_IN_AN_HOUR) {
             throw new IllegalArgumentException("Minutes must be included between 0 and 59");
         }
         this.startLunchH = startH;
         this.startLunchM = startM;
         this.stopLunchH = stopH;
         this.stopLunchM = stopM;
-        this.minimumLunchMillis = minimumMin * 60 * 1000;
+        this.minimumLunchMillis = minimumMin * SECONDS_IN_A_MINUTE * MILLISECONDS;
     }
 
     public void setMinimumBreak(int minimumBreakMinutes) {
-        if (minimumBreakMinutes < 0 || minimumBreakMinutes + workingDayMillis / 1000 / 60 > 24 * 60) {
+        if (minimumBreakMinutes < 0 || minimumBreakMinutes + workingDayMillis / MILLISECONDS / SECONDS_IN_A_MINUTE > HOURS_IN_A_DAY * MINUTES_IN_AN_HOUR) {
             throw new IllegalArgumentException("minimumBreakMinutes must be included between 0 and 24h - working day duration)");
         }
-        this.minimumBreakMillis = minimumBreakMinutes * 60 * 1000;
+        this.minimumBreakMillis = minimumBreakMinutes * SECONDS_IN_A_MINUTE * MILLISECONDS;
     }
 }

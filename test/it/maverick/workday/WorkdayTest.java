@@ -10,13 +10,17 @@ import static org.junit.Assert.assertEquals;
 
 public class WorkdayTest {
 
-    private DateFormat dateFormat = new SimpleDateFormat("dd-mm-yyyy hh:mm");
+    private static final int MILLISECONDS = 1000;
+    private static final int SECONDS_IN_A_MINUTE = 60;
+    private static final int MINUTES_IN_AN_HOUR = 60;
+
+    private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private MyClock myClock = new MyClock();
     private Workday workday;
 
     @Before
     public void setUp() throws Exception {
-        workday = new Workday(myClock, 60 * 8);
+        workday = new Workday(myClock, 8 * MINUTES_IN_AN_HOUR);
     }
 
     @Test
@@ -138,6 +142,72 @@ public class WorkdayTest {
     }
 
     @Test
+    public void testRemainingTimeWithEarlyShortLunchBreak() throws Exception {
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
+        workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 12:50"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 16:30").getTime());
+
+        assertEquals(convertInMilliSeconds(8, 0), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(0, 15), workday.getRemainingTime());
+    }
+
+    @Test
+    public void testRemainingTimeWithEarlyLunchBreak() throws Exception {
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
+        workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 13:00"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 16:30").getTime());
+
+        assertEquals(convertInMilliSeconds(7, 50), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(0, 15), workday.getRemainingTime());
+    }
+
+    @Test
+    public void testRemainingTimeWithShortDelayedLunchBreak() throws Exception {
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
+        workday.addClockingOut(dateFormat.parse("2010-07-10 13:40"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 16:30").getTime());
+
+        assertEquals(convertInMilliSeconds(8, 0), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(0, 15), workday.getRemainingTime());
+    }
+
+    @Test
+    public void testRemainingTimeWithDelayedLunchBreak() throws Exception {
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
+        workday.addClockingOut(dateFormat.parse("2010-07-10 13:30"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 16:30").getTime());
+
+        assertEquals(convertInMilliSeconds(7, 50), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(0, 15), workday.getRemainingTime());
+    }
+
+    @Test
+    public void testRemainingTimeWithLongLunchBreak() throws Exception {
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
+        workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 17:50").getTime());
+
+        assertEquals(convertInMilliSeconds(8, 0), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(0, 10), workday.getRemainingTime());
+    }
+
+
+    @Test
     public void testRoundedBreak() throws Exception {
         workday.setLunchBreak(12, 30, 14, 0, 30);
         workday.setMinimumBreak(15);
@@ -164,7 +234,7 @@ public class WorkdayTest {
     }
 
     private long convertInMilliSeconds(int hours, int minutes) {
-        return (hours * 60 + minutes) * 60 * 1000;
+        return (hours * MINUTES_IN_AN_HOUR + minutes) * SECONDS_IN_A_MINUTE * MILLISECONDS;
     }
 
     private class MyClock implements Clock {

@@ -10,7 +10,7 @@ import static org.junit.Assert.assertEquals;
 
 public class IntervalTest {
 
-    private DateFormat dateFormat = new SimpleDateFormat("dd-mm-yyyy hh:mm");
+    private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     @Test
     public void testGetDuration() throws Exception {
