@@ -98,39 +98,26 @@ public class Workday {
         for (int i = 1; i < clockings.size() - 1; i = i + 2) {
             Date startTime = clockings.get(i).getDate();
             Date endTime = clockings.get(i + 1).getDate();
-            breakIntervals.addAll(getIntervals(startTime, endTime));
+
+            if (isRegularLunchBreak(startTime, endTime)) {
+                breakIntervals.add(new Interval(startTime, endTime));
+            } else if (isShortLunchBreak(startTime, endTime)) {
+                breakIntervals.add(getRoundedLunchBreakInterval(startTime, endTime));
+            } else if (isEarlyLunchBreak(startTime, endTime)) {
+                breakIntervals.add(getRoundedBreakInterval(startTime, getValidStartLunchBreak()));
+                breakIntervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), endTime));
+            } else if (isDelayedLunchBreak(startTime, endTime)) {
+                breakIntervals.add(getRoundedLunchBreakInterval(startTime, getValidStopLunchBreak()));
+                breakIntervals.add(getRoundedBreakInterval(getValidStopLunchBreak(), endTime));
+            } else if (isLongLunchBreak(startTime, endTime)) {
+                breakIntervals.add(getRoundedBreakInterval(startTime, getValidStartLunchBreak()));
+                breakIntervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), getValidStopLunchBreak()));
+                breakIntervals.add(getRoundedBreakInterval(getValidStopLunchBreak(), endTime));
+            } else {
+                breakIntervals.add(getRoundedBreakInterval(startTime, endTime));
+            }
         }
         return breakIntervals;
-    }
-
-    private List<Interval> getIntervals(Date startTime, Date endTime) {
-        List<Interval> intervals = new ArrayList<Interval>();
-
-
-        if (isShortLunchBreak(startTime, endTime)) {
-            intervals.add(getRoundedLunchBreakInterval(startTime, endTime));
-        } else if (isEarlyLunchBreak(startTime, endTime)) {
-            intervals.add(getRouindedBreakInterval(startTime, getValidStartLunchBreak()));
-            intervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), endTime));
-        } else if (isDelayedLunchBreak(startTime, endTime)) {
-            intervals.add(getRoundedLunchBreakInterval(startTime, getValidStopLunchBreak()));
-            intervals.add(getRouindedBreakInterval(getValidStopLunchBreak(), endTime));
-        } else if (isLongLunchBreak(startTime, endTime)) {
-            intervals.add(getRouindedBreakInterval(startTime, getValidStartLunchBreak()));
-            intervals.add(getRoundedLunchBreakInterval(getValidStartLunchBreak(), getValidStopLunchBreak()));
-            intervals.add(getRouindedBreakInterval(getValidStopLunchBreak(), endTime));
-        } else if (minimumBreakMillis > 0) {
-            long intervalDuration = endTime.getTime() - startTime.getTime();
-            long multiplier = intervalDuration / minimumBreakMillis;
-            long breakTime = multiplier * minimumBreakMillis;
-            if (intervalDuration % minimumBreakMillis != 0) {
-                breakTime += minimumBreakMillis;
-            }
-            intervals.add(new Interval(startTime, new Date(startTime.getTime() + breakTime)));
-        } else {
-            intervals.add(new Interval(startTime, endTime));
-        }
-        return intervals;
     }
 
     private Interval getRoundedLunchBreakInterval(Date startTime, Date endTime) {
@@ -143,7 +130,7 @@ public class Workday {
         return new Interval(startTime, endInterval);
     }
 
-    private Interval getRouindedBreakInterval(Date startTime, Date endTime) {
+    private Interval getRoundedBreakInterval(Date startTime, Date endTime) {
         if (minimumBreakMillis > 0) {
             long intervalDuration = endTime.getTime() - startTime.getTime();
             long multiplier = intervalDuration / minimumBreakMillis;
@@ -155,6 +142,10 @@ public class Workday {
         } else {
             return new Interval(startTime, endTime);
         }
+    }
+
+    private boolean isRegularLunchBreak(Date startTime, Date endTime) {
+        return startTime.after(getValidStartLunchBreak()) && endTime.before(getValidStopLunchBreak()) && (endTime.getTime() - startTime.getTime()) >= minimumLunchMillis;
     }
 
     private boolean isShortLunchBreak(Date startTime, Date endTime) {

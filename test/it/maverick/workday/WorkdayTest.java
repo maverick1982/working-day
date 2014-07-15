@@ -21,6 +21,8 @@ public class WorkdayTest {
     @Before
     public void setUp() throws Exception {
         workday = new Workday(myClock, 8 * MINUTES_IN_AN_HOUR);
+        workday.setLunchBreak(12, 30, 14, 0, 30);
+        workday.setMinimumBreak(15);
     }
 
     @Test
@@ -107,7 +109,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithExactlyValidLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:10"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 13:00"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 13:30"));
@@ -119,19 +120,17 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithValidLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.addClockingIn(dateFormat.parse("2010-07-10 8:10"));
+        workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 13:00"));
-        workday.addClockingIn(dateFormat.parse("2010-07-10 13:45"));
-        myClock.setTimeNow(dateFormat.parse("2010-07-10 14:55").getTime());
+        workday.addClockingIn(dateFormat.parse("2010-07-10 13:40"));
+        myClock.setTimeNow(dateFormat.parse("2010-07-10 14:50").getTime());
 
-        assertEquals(convertInMilliSeconds(6, 0), workday.getWorkedTime());
-        assertEquals(convertInMilliSeconds(2, 0), workday.getRemainingTime());
+        assertEquals(convertInMilliSeconds(6, 10), workday.getWorkedTime());
+        assertEquals(convertInMilliSeconds(1, 50), workday.getRemainingTime());
     }
 
     @Test
     public void testRemainingTimeWithShortLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 13:00"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 13:15"));
@@ -143,8 +142,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithEarlyShortLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 12:50"));
@@ -156,8 +153,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithEarlyLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 13:00"));
@@ -169,8 +164,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithShortDelayedLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 13:40"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
@@ -182,8 +175,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithDelayedLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 13:30"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
@@ -195,8 +186,6 @@ public class WorkdayTest {
 
     @Test
     public void testRemainingTimeWithLongLunchBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 12:20"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 14:10"));
@@ -209,8 +198,6 @@ public class WorkdayTest {
 
     @Test
     public void testRoundedBreak() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 9:00"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 9:05"));
@@ -222,8 +209,6 @@ public class WorkdayTest {
 
     @Test
     public void testRoundedBreak2() throws Exception {
-        workday.setLunchBreak(12, 30, 14, 0, 30);
-        workday.setMinimumBreak(15);
         workday.addClockingIn(dateFormat.parse("2010-07-10 8:00"));
         workday.addClockingOut(dateFormat.parse("2010-07-10 9:00"));
         workday.addClockingIn(dateFormat.parse("2010-07-10 9:20"));
